@@ -1,0 +1,29 @@
+# Deep Learning & YOLO Framework
+ultralytics>=8.1.0
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Intel OpenVINO & Compression Toolkits
+openvino>=2024.0.0
+nncf>=2.8.0
+
+# ONNX Runtime Ecosystem
+onnx>=1.15.0
+onnxruntime>=1.17.0
+
+# Computer Vision & Numerical Processing
+numpy>=1.24.0
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# Performance Profiling & Hardware Monitoring
+psutil>=5.9.0
+
+# CVAT Integration & Networking
+requests>=2.31.0
+
+# Visualization & CLI UX
+rich>=13.7.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+pyyaml>=6.0.1
