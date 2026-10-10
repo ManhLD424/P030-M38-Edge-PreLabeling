@@ -1,0 +1,19 @@
+# CVAT Server Integration Configuration
+
+server:
+  url: "https://cvat.note.transformerlabs.ai"
+  organization: "ai20k-cohort-4a"
+  timeout: 30
+
+defaults:
+  mode: "replace"                # 'replace' hoặc 'merge'
+  batch_size: 20                 # Số lượng frame xử lý và đẩy mỗi batch
+
+# Mapping giữa class phát hiện của mô hình và label ID của CVAT Job
+label_mapping:
+  "car": "vehicles"
+  "bus": "vehicles"
+  "truck": "vehicles"
+  "motorcycle": "two-wheels"
+  "bicycle": "two-wheels"
+  "person": "pedestrian"

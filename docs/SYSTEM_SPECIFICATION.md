@@ -1,5 +1,5 @@
 # ĐẶC TẢ KỸ THUẬT HỆ THỐNG (SYSTEM SPECIFICATION)
-# Đề tài M38: Model Compression for Edge Pre-Labeling
+# Đề tài P030 — M38: Model Compression for Edge Pre-Labeling
 
 ---
 
@@ -8,18 +8,21 @@
 ### 1.1. Bối cảnh thực tế (Problem Statement)
 Trong các dự án phát triển hệ thống thị giác máy tính cho xe tự hành (Autonomous Vehicles / ADAS) và phân tích giao thông, quy trình gán nhãn dữ liệu (Data Annotation) chiếm tới 70-80% tổng thời gian và chi phí của toàn bộ vòng đời MLOps. Để đẩy nhanh tiến độ, giải pháp **Pre-Labeling** (sử dụng mô hình AI gán nhãn mồi tự động để con người chỉ cần kiểm tra và chỉnh sửa) được áp dụng rộng rãi.
 
-Tuy nhiên, các mô hình phát hiện đối tượng có độ chính xác cao hiện nay (như YOLOv8x, RT-DETR-X) thường có kích thước rất lớn (hơn 100MB, hàng trăm triệu tham số) và đòi hỏi card đồ họa chuyên dụng (GPU Cloud) đắt tiền để vận hành. Điều này dẫn tới 3 nút thắt cổ chai:
+Tuy nhiên, các mô hình phát hiện đối tượng có độ chính xác cao hiện nay thường đòi hỏi card đồ họa chuyên dụng (GPU Cloud) đắt tiền để vận hành. Điều này dẫn tới 3 nút thắt cổ chai:
 1. **Chi phí hạ tầng cao:** Thuê GPU Cloud liên tục cho các đợt pre-labeling quy mô lớn rất tốn kém.
 2. **Độ trễ và phụ thuộc đường truyền:** Gửi hàng triệu khung hình ảnh phân giải cao lên Cloud gây tắc nghẽn băng thông mạng.
 3. **Bảo mật và riêng tư dữ liệu:** Dữ liệu xe tự hành, camera hành trình thường có tính bảo mật cao, không được phép chuyển ra khỏi mạng nội bộ.
 
-### 1.2. Mục tiêu của đề tài (Objectives)
-Đề tài **M38 — Model Compression for Edge Pre-Labeling** tập trung vào việc nghiên cứu, hiện thực hóa và đánh giá một hệ thống **nén mô hình phát hiện đối tượng giao thông (Traffic Object Detection)** để có thể vận hành trực tiếp trên **thiết bị biên và máy trạm annotator (CPU thông thường)** với các tiêu chí định lượng:
-- **Tốc độ (Inference Speed):** Tăng tốc độ suy luận từ 2 đến 4 lần trên CPU laptop thông thường (đạt mức 30–50+ FPS).
-- **Kích thước mô hình (Model Size):** Giảm dung lượng file mô hình từ 3 đến 4 lần (từ ~45MB xuống còn ~11-12MB).
-- **Mức tiêu thụ bộ nhớ (RAM Footprint):** Giảm tải bộ nhớ RAM khi nạp mô hình.
-- **Độ chính xác (Accuracy Preservation):** Duy trì độ chính xác của nhãn mồi với mức suy giảm $mAP@50 < 1.5\%$.
-- **Tích hợp End-to-End:** Tự động kết nối với công cụ gán nhãn CVAT thông qua REST API để nạp trực tiếp kết quả pre-label vào các Task/Job thực tế.
+### 1.2. Định hướng đề tài: Thuần Kỹ thuật / MLOps Engineering (Scope & Objectives)
+Đề tài **P030 — M38** được định vị là bài toán **Thuần Kỹ thuật (Pure Software & MLOps Engineering)**:
+- **Không yêu cầu nghiên cứu thuật toán huấn luyện hay fine-tuning:** Tận dụng trực tiếp các **mô hình Pre-trained chuẩn công nghiệp có sẵn** (Off-the-shelf Checkpoint: YOLOv8s).
+- **Trọng tâm kỹ thuật:** Xây dựng pipeline tự động hóa nén mô hình bằng phương pháp **Post-Training Static Quantization (PTQ INT8)** với bộ công cụ Intel NNCF và OpenVINO Intermediate Representation (IR).
+- **Mục tiêu định lượng trên CPU máy trạm (Annotator Workstation):**
+  - **Tốc độ (Inference Speed):** Đạt mức thời gian thực 30–50+ FPS trên CPU thông thường (tăng tốc 2–4 lần so với PyTorch FP32 nhờ tập lệnh phần cứng Intel VNNI / AVX-512).
+  - **Kích thước mô hình (Model Size):** Giảm dung lượng file từ ~45MB xuống còn ~11.5MB (giảm ~3.9 lần).
+  - **Mức tiêu thụ bộ nhớ (RAM Footprint):** Giảm tải bộ nhớ RAM từ ~1.2GB xuống dưới 400MB khi nạp mô hình.
+  - **Độ chính xác nhãn mồi:** Duy trì sai lệch vị trí hộp và confidence $< 1.5\%$ so với FP32.
+  - **Tích hợp End-to-End:** Kết nối trực tiếp với nền tảng CVAT qua REST API để đẩy nhãn mồi tự động vào các Task/Job gán nhãn thực tế, giúp tiết kiệm ~70% thời gian gán nhãn cho annotator.
 
 ---
 

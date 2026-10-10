@@ -1,0 +1,79 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets and environment variables
+*.env*
+!*.env.example
+
+# Large model weights and artifacts (keep directories via .gitkeep)
+models/raw/*.pt
+models/onnx/*.onnx
+models/openvino_fp16/*.bin
+models/openvino_fp16/*.xml
+models/openvino_int8/*.bin
+models/openvino_int8/*.xml
+*.pth
+*.onnx
+*.engine
+
+# Datasets and bulk images
+data/calibration/*.jpg
+data/calibration/*.jpeg
+data/calibration/*.png
+data/val_subset/
+data/raw/
+*.zip
+*.tar.gz
+
+# OS specific
+Thumbs.db
+Desktop.ini
+.DS_Store

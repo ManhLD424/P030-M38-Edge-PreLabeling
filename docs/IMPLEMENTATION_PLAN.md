@@ -1,16 +1,16 @@
 # KẾ HOẠCH TRIỂN KHAI DỰ ÁN CHI TIẾT TỪ A - Z
-# Đề tài M38: Model Compression for Edge Pre-Labeling
+# Đề tài P030 — M38: Model Compression for Edge Pre-Labeling
 
 > **Nhóm thực hiện:**
 > - **Lê Đức Mạnh (Lead Developer & System Architect):** Phụ trách kiến trúc hệ thống, pipeline xuất mô hình, engine suy luận tối ưu CPU, tích hợp CVAT REST API, bộ đo hiệu năng phần cứng và hoàn thiện CLI.
-> - **Phạm Hoàng Anh (AI Research & Optimization Specialist):** Phụ trách chuẩn bị dữ liệu BDD100K/Calibration, cấu hình thuật toán lượng tử hóa NNCF PTQ INT8, đánh giá độ chính xác mAP/Loss và phân tích sai số trên từng class.
+> - **Phạm Hoàng Anh (AI Research & Optimization Specialist):** Phụ trách chuẩn bị dữ liệu calibration (200 ảnh không nhãn), cấu hình thuật toán lượng tử hóa NNCF PTQ INT8, đánh giá độ sai lệch mô hình và phân tích sai số gán nhãn.
 
 ---
 
 ## TỔNG QUAN TIẾN ĐỘ THEO CÁC GIAI ĐOẠN (ROADMAP)
 
 ```
-Giai đoạn 0: Khởi tạo & Dữ liệu Baseline (Setup & Baseline Alignment)
+Giai đoạn 0: Chuẩn hóa Repo, Môi trường & Pre-trained Baseline Checkpoint
       │
       ▼
 Giai đoạn 1: Pipeline Nén mô hình sang INT8 (OpenVINO IR & NNCF PTQ)
@@ -19,7 +19,7 @@ Giai đoạn 1: Pipeline Nén mô hình sang INT8 (OpenVINO IR & NNCF PTQ)
 Giai đoạn 2: Xây dựng Unified Inference Engine đa Runtime (PyTorch, ONNX, OpenVINO)
       │
       ▼
-Giai đoạn 3: Bộ công cụ Benchmark thực nghiệm (Latency, FPS, RAM, Disk, mAP)
+Giai đoạn 3: Bộ công cụ Benchmark thực nghiệm (Latency, FPS, RAM, Disk, IoU Error)
       │
       ▼
 Giai đoạn 4: Tích hợp CVAT REST API & Hoàn thiện CLI Tool End-to-End
@@ -30,23 +30,22 @@ Giai đoạn 5: Hoàn thiện Báo cáo, Slide thuyết trình & Kịch bản b�
 
 ---
 
-## GIAI ĐOẠN 0: KHỞI TẠO HỆ THỐNG & CHUẨN BỊ DỮ LIỆU BASELINE
+## GIAI ĐOẠN 0: KHỞI TẠO HỆ THỐNG & CHUẨN BỊ PRE-TRAINED BASELINE
 *Thời lượng dự kiến: 1 – 2 ngày*
 
 ### Mục tiêu:
-Thiết lập môi trường phát triển đồng bộ giữa 2 thành viên, chuẩn bị mô hình gốc YOLOv8s (FP32), tạo tập dữ liệu con (BDD100K 10 classes) và tập calibration 300 ảnh.
+Thiết lập môi trường phát triển đồng bộ, tải mô hình Pre-trained chuẩn `yolov8s.pt` (FP32), chuẩn bị tập calibration 200–300 ảnh giao thông không cần nhãn.
 
 ### Nhiệm vụ cụ thể:
-- [ ] **Lê Đức Mạnh:**
-  - Khởi tạo cấu trúc dự án chuẩn `d:/Project/M38-Edge-PreLabeling` theo kiến trúc Clean Architecture.
-  - Cấu hình file `requirements.txt` và `pyproject.toml` với các phiên bản thư viện tương thích (`openvino>=2024.0`, `nncf>=2.8`, `ultralytics>=8.1`).
-  - Viết script kiểm tra môi trường phần cứng `scripts/check_env.py` (kiểm tra tập lệnh CPU: AVX2/AVX-512/VNNI, phiên bản Python, dung lượng RAM).
-  - Thiết lập Git repository nội bộ và thống nhất quy chuẩn commit (Conventional Commits).
+- [x] **Lê Đức Mạnh:**
+  - Chuẩn hóa cấu trúc dự án `P030-M38-Edge-PreLabeling` theo kiến trúc Clean Architecture.
+  - Cấu hình file `requirements.txt` (khóa `numpy<2.0`, thêm `click`, `pytest`, `python-dotenv`).
+  - Thiết lập Git remote chính thức trỏ về `https://github.com/ManhLD424/P030-M38-Edge-PreLabeling.git`.
+  - Khởi tạo các file cấu hình `configs/default_config.yaml`, `configs/cvat_config.yaml`, `.env.example`.
 - [ ] **Phạm Hoàng Anh:**
-  - Chuẩn bị tập dữ liệu ảnh giao thông (trích xuất tập con BDD100K với 10 lớp giao thông: car, bus, truck, pedestrian, rider, motorcycle, bicycle, train, traffic light, traffic sign).
-  - Tách riêng **300 ảnh không gán nhãn** lưu vào `data/calibration/` dùng cho thuật toán NNCF MinMax calibration sau này.
-  - Tải checkpoint gốc `models/raw/yolov8s.pt`, chạy kiểm thử cơ bản để đo chỉ số baseline ban đầu trên tập validation ($mAP@50$ gốc).
-  - Lập bảng thông số mô hình gốc (số tham số, số FLOPs, dung lượng file .pt).
+  - Chuẩn bị 200–300 ảnh giao thông mẫu lưu vào `data/calibration/` dùng cho thuật toán NNCF MinMax calibration.
+  - Tải checkpoint pre-trained chuẩn `models/raw/yolov8s.pt`, chạy kiểm thử suy luận PyTorch FP32 ban đầu để lấy baseline.
+  - Ghi nhận thông số baseline gốc (kích thước file .pt, latency ban đầu trên CPU).
 
 **Sản phẩm bàn giao Giai đoạn 0 (Deliverables):**
 - Môi trường chạy được đồng nhất trên máy cả 2 thành viên.
