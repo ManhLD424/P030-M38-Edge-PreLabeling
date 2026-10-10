@@ -1,5 +1,5 @@
-"""
-Kiểm thử đơn vị cơ bản cho BaseInferenceEngine và Detection data structure.
+﻿"""
+Kiá»ƒm thá»­ Ä‘Æ¡n vá»‹ cÆ¡ báº£n cho BaseInferenceEngine vÃ  Detection data structure.
 """
 
 import pytest

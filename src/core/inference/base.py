@@ -1,4 +1,4 @@
-"""
+﻿"""
 Module Base Inference Engine: Định nghĩa giao diện suy luận chuẩn hóa và cấu trúc kết quả Detection.
 """
 
