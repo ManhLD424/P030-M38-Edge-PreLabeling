@@ -1,23 +1,20 @@
-# P030 — M38: Model Compression for Edge Pre-Labeling
+﻿# P030 — M38: 3D LiDAR Model Compression & Edge Pre-Labeling
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Intel OpenVINO](https://img.shields.io/badge/Intel-OpenVINO_2024-purple.svg)](https://github.com/openvinotoolkit/openvino)
-[![NNCF PTQ](https://img.shields.io/badge/Compression-NNCF_INT8-green.svg)](https://github.com/openvinotoolkit/nncf)
-[![CVAT REST API](https://img.shields.io/badge/Integration-CVAT_API-orange.svg)](https://github.com/cvat-ai/cvat)
+[![PointPillars 3D](https://img.shields.io/badge/Model-PointPillars_KITTI-purple.svg)](https://github.com/open-mmlab/mmdetection3d)
+[![CVAT 3D Tool](https://img.shields.io/badge/Integration-CVAT_3D_REST_API-orange.svg)](https://github.com/cvat-ai/cvat)
+[![Edge CPU Optimized](https://img.shields.io/badge/Inference-CPU_Optimized-green.svg)](https://github.com/openvinotoolkit/openvino)
 
-> **Hệ thống nén mô hình phát hiện đối tượng giao thông bằng lượng tử hóa sau huấn luyện (Post-Training Quantization - INT8) và tối ưu hóa suy luận trên CPU biên, tích hợp tự động hóa quy trình gán nhãn dữ liệu (Pre-labeling) lên nền tảng CVAT.**
+> **Hệ thống tiền gán nhãn dữ liệu LiDAR 3D (3D Point Cloud Pre-Labeling) trên CPU máy trạm biên, trích xuất 3D Cuboids theo chuẩn ISO 8855 và tự động hóa nạp nhãn mồi vào công cụ CVAT 3D TOOL qua REST API.**
 
 ---
 
 ## 1. Giới thiệu bài toán (Problem Statement)
 
-Trong quy trình phát triển hệ thống thị giác máy tính cho xe tự hành (ADAS/Autonomous Vehicles), khâu **gán nhãn dữ liệu (Data Annotation)** chiếm tới 70–80% chi phí và thời gian của toàn bộ vòng đời MLOps. Giải pháp **Pre-Labeling** (sử dụng mô hình AI vẽ hộp mồi để annotator chỉ cần kiểm tra/hiệu chỉnh) giúp tăng tốc độ gán nhãn lên 3–4 lần.
-
-Tuy nhiên, các mô hình phát hiện vật thể hiện đại đòi hỏi GPU đắt đỏ và đường truyền Cloud băng thông lớn. **Đề tài P030 — M38** tập trung giải quyết bài toán theo hướng **thuần kỹ thuật (Pure MLOps / Software Engineering)**:
-- Sử dụng mô hình **Pre-trained có sẵn** (Off-the-shelf checkpoint chuẩn như YOLOv8s).
-- Áp dụng kỹ thuật nén **Post-Training Static Quantization (PTQ INT8)** bằng Intel NNCF và OpenVINO Intermediate Representation (IR).
-- Tối ưu hóa suy luận thời gian thực trực tiếp trên **CPU thông thường (Intel AVX-512 / VNNI)** của máy trạm annotator.
-- Đóng gói công cụ dòng lệnh (CLI) khép kín kết nối trực tiếp với **CVAT REST API** để nạp nhãn mồi tự động vào Task/Job gán nhãn thực tế.
+Trong quy trình phát triển hệ thống xe tự hành (Autonomous Vehicles / Robotaxi), khâu **gán nhãn dữ liệu 3D Point Cloud (LiDAR 3D Annotation)** là khâu phức tạp và tốn kém nhất:
+- Annotator phải xoay không gian 3 chiều để chỉnh kích thước (Dx, Dy, Dz), vị trí tâm (X, Y, Z) và góc xoay (Yaw) của từng hộp **3D Cuboid**.
+- Thời gian vẽ thủ công một frame 3D thường mất **3–5 phút/frame**.
+- **Giải pháp M38**: Sử dụng mô hình **PointPillars 3D** (pretrained KITTI / Robotaxi) kết hợp thuật toán tối ưu hóa hình học trên CPU máy trạm để tự động tạo hộp **3D Cuboid mồi**, giảm thời gian gán nhãn xuống còn **30–45 giây/frame** (tiết kiệm ~70–80% thời gian cho annotator).
 
 ---
 
@@ -26,93 +23,79 @@ Tuy nhiên, các mô hình phát hiện vật thể hiện đại đòi hỏi GP
 ```
 d:/Project/M38-Edge-PreLabeling/
 ├── configs/
-│   ├── default_config.yaml         # Cấu hình ngưỡng confidence, IOU, path
-│   └── cvat_config.yaml            # Cấu hình CVAT Server, Token, Org
+│   ├── default_config.yaml         # Cấu hình PointPillars, voxel size, delta sensor, thresholds
+│   └── cvat_config.yaml            # Cấu hình CVAT 3D Server, Token, Org, Label mapping
 ├── data/
-│   ├── calibration/                # 200-300 ảnh giao thông mẫu dùng cho NNCF PTQ
-│   └── sample_images/              # Ảnh mẫu demo
+│   └── pointclouds/                # Tập dữ liệu PCD mẫu (demo.pcd 17,238 điểm)
 ├── docs/
-│   ├── SYSTEM_SPECIFICATION.md     # Đặc tả kỹ thuật toàn diện
-│   └── IMPLEMENTATION_PLAN.md      # Kế hoạch triển khai & RACI matrix
-├── models/
-│   ├── raw/                        # yolov8s.pt gốc (FP32)
-│   ├── onnx/                       # yolov8s.onnx (FP32)
-│   ├── openvino_fp16/              # yolov8s_fp16.xml & .bin
-│   └── openvino_int8/              # yolov8s_int8.xml & .bin (Mô hình nén)
+│   └── SYSTEM_SPECIFICATION.md     # Đặc tả kỹ thuật toàn diện hệ thống 3D
 ├── src/
 │   ├── core/
-│   │   ├── compression/            # Module xuất ONNX & lượng tử hóa NNCF INT8
-│   │   ├── inference/              # Unified Inference Engine (Torch/ONNX/OpenVINO)
-│   │   ├── benchmark/              # Đo Latency, FPS, RAM peak, Model size
-│   │   └── cvat/                   # Client kết nối CVAT REST API
+│   │   ├── pointcloud/             # Module đọc/ghi PCD (Binary/ASCII), ước lượng ground
+│   │   ├── geometry/               # Dataclass Cuboid3D, góc Yaw, 16-point CVAT adapter
+│   │   ├── models/                 # PointPillars 3D Detector & Edge Clustering Engine
+│   │   ├── cvat/                   # Client kết nối CVAT 3D REST API (shapes & tracks)
+│   │   └── benchmark/              # Bộ đo kiểm độ trễ I/O, Ground, Inference, CVAT format
 │   └── cli/
 │       └── main.py                 # Giao diện dòng lệnh CLI (Rich UI)
-├── tests/                          # Bộ kiểm thử tự động (Unit test)
-├── requirements.txt                # Danh sách thư viện đồng bộ
-├── .gitignore                      # Cấu hình loại trừ Git
+├── tests/                          # Bộ kiểm thử tự động với 14 test cases
 └── README.md                       # Tài liệu dự án
 ```
 
 ---
 
-## 3. Các chỉ tiêu kỹ thuật định lượng (Target Metrics)
+## 3. Định dạng dữ liệu & Chuẩn tương thích CVAT 3D
 
-| Chỉ tiêu | Mô hình gốc (FP32) | Mô hình nén (INT8 OpenVINO) | Mức độ cải thiện |
-| :--- | :---: | :---: | :---: |
-| **Kích thước mô hình (Disk)** | ~45.0 MB | **~11.5 MB** | **Giảm ~3.9x (74%)** |
-| **Tốc độ suy luận CPU (Latency)** | ~65–80 ms | **~18–25 ms** | **Nhanh hơn 3x–4x** |
-| **Thông lượng CPU (Throughput)** | ~12–15 FPS | **~40–55 FPS** | **Thời gian thực trên CPU** |
-| **RAM Footprint (Peak RSS)** | ~1.2 GB (PyTorch) | **~350 MB (OpenVINO)** | **Giảm ~70% RAM** |
-| **Chất lượng nhãn mồi** | Baseline FP32 | IoU sai lệch $< 1.5\%$ | Duy trì độ chính xác cao |
-| **Thời gian gán nhãn Annotator** | ~45s / frame (Vẽ tay) | **~12s / frame (Sửa mồi)** | **Tiết kiệm ~70% thời gian** |
+Mô hình xuất hộp **3D Cuboid** theo chuẩn **16 phần tử của CVAT 3D**:
+```json
+"points": [
+  x, y, z,          // [0..2]: Tọa độ tâm hộp (meters)
+  0.0, 0.0, yaw,    // [3..5]: Góc xoay roll, pitch, yaw (radians)
+  dx, dy, dz,       // [6..8]: Kích thước dài (L), rộng (W), cao (H)
+  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 // [9..15]: Padding dự phòng
+]
+```
+Tương thích 100% với định dạng của extension **CVAT 3D TOOL** (`CVAT-3D-Copilot`).
 
 ---
 
-## 4. Hướng dẫn cài đặt nhanh (Quickstart)
+## 4. Hướng dẫn sử dụng CLI Tool
 
-### 4.1. Khởi tạo môi trường ảo
-
+### 4.1. Kiểm tra môi trường hệ thống
 ```bash
-# Tạo môi trường ảo Python 3.10 hoặc 3.11
-python -m venv .venv
-
-# Kích hoạt trên Windows PowerShell:
-.venv\Scripts\Activate.ps1
-
-# Cài đặt các thư viện cần thiết:
-pip install -r requirements.txt
+python -m src.cli.main info
 ```
 
-### 4.2. Chạy quy trình nén mô hình (Quantization)
-
+### 4.2. Chạy suy luận 3D Pre-Labeling trên file PCD
 ```bash
-python -m src.cli.main compress \
-    --weights models/raw/yolov8s.pt \
-    --calib-dir data/calibration \
-    --output-dir models/openvino_int8
+python -m src.cli.main infer --pcd data/pointclouds/demo.pcd --out outputs --score-thresh 0.30
 ```
+- Tự động nạp điểm LiDAR, ước lượng cao độ mặt đường $Z_{ground}$.
+- Trích xuất danh sách 3D Cuboids (`vehicles`, `pedestrian`, `two-wheels`).
+- Xuất file kết quả `outputs/boxes_demo.json` chuẩn schema CVAT 3D.
 
-### 4.3. Chạy đo kiểm hiệu năng (Benchmark)
-
+### 4.3. Đo kiểm hiệu năng thực nghiệm trên CPU
 ```bash
-python -m src.cli.main benchmark \
-    --models-dir models \
-    --iterations 200
+python -m src.cli.main benchmark --pcd data/pointclouds/demo.pcd --runs 30
 ```
+Thống kê chi tiết: thời gian I/O, ước lượng Ground, thời gian suy luận 3D, tổng độ trễ P50/P90, Throughput (FPS) và Peak RAM.
 
-### 4.4. Đẩy nhãn tự động lên CVAT (Edge Pre-Labeling)
-
+### 4.4. Nạp nhãn mồi tự động lên CVAT 3D Job
 ```bash
-python -m src.cli.main prelabel \
-    --model models/openvino_int8/yolov8s_int8.xml \
-    --cvat-job-id 9400 \
-    --conf-thresh 0.35 \
-    --mode replace
+python -m src.cli.main prelabel --job-id 9426 --pcd data/pointclouds/demo.pcd --mode merge
 ```
 
 ---
 
-## 5. Đội ngũ thực hiện
+## 5. Kết quả kiểm thử tự động (Unit Tests)
 
-- **Lê Đức Mạnh (Lead Developer & System Architect):** Phụ trách kiến trúc hệ thống, Unified Inference Engine đa runtime, tích hợp CVAT REST API, bộ đo hiệu năng phần cứng và hoàn thiện CLI Tool.
-- **Phạm Hoàng Anh (AI Research & Optimization Specialist):** Phụ trách chuẩn bị dữ liệu calibration, cấu hình thuật toán lượng tử hóa NNCF PTQ INT8, đánh giá độ sai lệch mô hình và phân tích sai số gán nhãn.
+Chạy bộ kiểm thử tự động với `pytest`:
+```bash
+python -m pytest tests -v
+```
+Toàn bộ **14/14 test cases** đã vượt qua kiểm định:
+- Đọc/ghi PCD Binary v0.7 với 17,238 điểm.
+- Ước lượng ground và dịch chuyển hệ quy chiếu $Z_{source} \leftrightarrow Z_{model}$.
+- Đóng gói và giải mã 16-point CVAT 3D Cuboids.
+- Thuật toán loại bỏ hộp đè lấn (`merge_boxes`) và lọc người đi bộ trên nóc xe (`drop_boxes_on_cars`).
+- Đóng gói shapes và tracks sequence cho CVAT 3D REST API.

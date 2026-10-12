@@ -1,31 +1,28 @@
-# Default Configuration for P030-M38 Model Compression & Inference
+﻿# P030-M38: 3D LiDAR Point Cloud Model Compression & Pre-Labeling Configuration
 
-model:
-  raw_weights: "models/raw/yolov8s.pt"
-  onnx_path: "models/onnx/yolov8s.onnx"
-  openvino_fp16_dir: "models/openvino_fp16"
-  openvino_int8_dir: "models/openvino_int8"
-  input_shape: [1, 3, 640, 640]
-  device: "CPU"
+pointcloud:
+  default_pcd: "data/pointclouds/demo.pcd"
+  range: [0.0, -39.68, -3.0, 69.12, 39.68, 1.0]  # xmin, ymin, zmin, xmax, ymax, zmax (meters)
+  coordinate_system: "ISO_8855"                   # X: Forward, Y: Left, Z: Up
 
-compression:
-  nncf_preset: "PERFORMANCE"     # INT8 symmetric weights, asymmetric activations
-  subset_size: 200               # Số lượng ảnh calibration tĩnh
-  calib_dir: "data/calibration"
-  model_type: "OBJECT_DETECTION"
-
-inference:
-  conf_threshold: 0.35
-  iou_threshold: 0.45
-  num_threads: 4                 # Tối ưu hóa số luồng CPU
-  performance_mode: "LATENCY"    # LATENCY hoặc THROUGHPUT
+pointpillars:
+  preset: "KITTI"
+  voxel_size: [0.16, 0.16, 4.0]                  # dx, dy, dz (meters)
+  delta: 1.73                                     # Sensor height offset (meters)
+  score_thresh: 0.30
+  heading_mode: "kitti"                           # "kitti" or "forward"
+  z_bottom: true                                  # Checkpoint returns bottom face Z
+  checkpoint: "models/pretrained/epoch_160.pth"
 
 classes:
-  0: "person"
-  1: "bicycle"
-  2: "car"
-  3: "motorcycle"
-  5: "bus"
-  7: "truck"
-  9: "traffic light"
-  11: "stop sign"
+  0: "pedestrian"
+  1: "two-wheels"
+  2: "vehicles"
+
+vehicle_specs:
+  length_min: 2.8
+  length_max: 5.8
+  width_min: 1.4
+  width_max: 2.3
+  height_min: 1.1
+  height_max: 2.2

@@ -1,4 +1,4 @@
-# CVAT Server Integration Configuration
+﻿# CVAT 3D Server Integration Configuration
 
 server:
   url: "https://cvat.note.transformerlabs.ai"
@@ -6,14 +6,16 @@ server:
   timeout: 30
 
 defaults:
-  mode: "replace"                # 'replace' hoặc 'merge'
-  batch_size: 20                 # Số lượng frame xử lý và đẩy mỗi batch
+  mode: "merge"                  # 'merge' or 'replace'
+  batch_size: 10
 
-# Mapping giữa class phát hiện của mô hình và label ID của CVAT Job
+# Mapping giữa class phát hiện của mô hình 3D và label ID/name của CVAT Job
 label_mapping:
-  "car": "vehicles"
-  "bus": "vehicles"
-  "truck": "vehicles"
-  "motorcycle": "two-wheels"
-  "bicycle": "two-wheels"
-  "person": "pedestrian"
+  "vehicles": 1
+  "car": 1
+  "bus": 1
+  "truck": 1
+  "two-wheels": 2
+  "motorcycle": 2
+  "bicycle": 2
+  "pedestrian": 3
