@@ -2,6 +2,13 @@
 Module Quantizer: Lượng tử hóa sau huấn luyện tĩnh (Static PTQ INT8) bằng Intel NNCF.
 """
 
+import sys
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+
 from pathlib import Path
 from typing import List, Optional, Callable
 import numpy as np

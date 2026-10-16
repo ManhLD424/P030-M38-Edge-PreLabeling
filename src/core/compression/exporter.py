@@ -1,6 +1,13 @@
-﻿"""
+"""
 Module Exporter: Chuyển đổi mô hình Pre-trained PyTorch sang ONNX và OpenVINO FP16.
 """
+
+import sys
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
 
 import os
 from pathlib import Path

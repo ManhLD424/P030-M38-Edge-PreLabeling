@@ -1,11 +1,41 @@
-﻿"""
+"""
 Module Base Inference Engine: Định nghĩa giao diện suy luận chuẩn hóa và cấu trúc kết quả Detection.
 """
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 import numpy as np
+
+# 80 lớp chuẩn của COCO (YOLOv8s pretrained weights)
+COCO_CLASSES: List[str] = [
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+    "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+    "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+    "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+    "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
+    "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
+    "hair drier", "toothbrush"
+]
+
+# 10 lớp giao thông cốt lõi của BDD100K
+BDD100K_CLASSES: List[str] = [
+    "pedestrian", "rider", "car", "truck", "bus", "train", "motorcycle", "bicycle", "traffic light", "traffic sign"
+]
+
+COCO_TO_BDD100K: Dict[str, str] = {
+    "person": "pedestrian",
+    "car": "car",
+    "truck": "truck",
+    "bus": "bus",
+    "train": "train",
+    "motorcycle": "motorcycle",
+    "bicycle": "bicycle",
+    "traffic light": "traffic light",
+    "stop sign": "traffic sign"
+}
 
 
 @dataclass

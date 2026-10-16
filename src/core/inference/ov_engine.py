@@ -7,7 +7,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import openvino as ov
-from src.core.inference.base import BaseInferenceEngine, Detection
+from src.core.inference.base import BaseInferenceEngine, Detection, COCO_CLASSES
 
 
 class OpenVINOInferenceEngine(BaseInferenceEngine):
@@ -46,9 +46,22 @@ class OpenVINOInferenceEngine(BaseInferenceEngine):
         """
         orig_h, orig_w = image.shape[:2]
 
-        # 1. Tiền xử lý (Letterbox/Resize 640x640, chuẩn hóa 0..1, CHW, BCHW)
-        resized = cv2.resize(image, (640, 640))
-        input_tensor = resized.astype(np.float32) / 255.0
+        # 1. Tiền xử lý chuẩn Letterbox (giữ nguyên aspect ratio và padding 114)
+        r = min(640.0 / orig_h, 640.0 / orig_w)
+        new_unpad = (int(round(orig_w * r)), int(round(orig_h * r)))
+        dw = (640.0 - new_unpad[0]) / 2.0
+        dh = (640.0 - new_unpad[1]) / 2.0
+
+        if (orig_w, orig_h) != new_unpad:
+            resized = cv2.resize(image, new_unpad, interpolation=cv2.INTER_LINEAR)
+        else:
+            resized = image.copy()
+
+        top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+        left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+        padded = cv2.copyMakeBorder(resized, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(114, 114, 114))
+
+        input_tensor = padded.astype(np.float32) / 255.0
         input_tensor = np.transpose(input_tensor, (2, 0, 1))[None, ...]
 
         # 2. Suy luận qua Compiled Model
@@ -68,18 +81,15 @@ class OpenVINOInferenceEngine(BaseInferenceEngine):
         if len(filtered_boxes) == 0:
             return []
 
-        # Chuyển đổi cx, cy, w, h -> x1, y1, x2, y2 và scale lại kích thước gốc
-        scale_x = orig_w / 640.0
-        scale_y = orig_h / 640.0
-
+        # Chuyển đổi cx, cy, w, h sang x1, y1, x2, y2 trên tọa độ ảnh gốc
         boxes_xyxy = []
         for box in filtered_boxes:
             cx, cy, w, h = box
-            x1 = (cx - w / 2) * scale_x
-            y1 = (cy - h / 2) * scale_y
-            x2 = (cx + w / 2) * scale_x
-            y2 = (cy + h / 2) * scale_y
-            boxes_xyxy.append([int(x1), int(y1), int(x2 - x1), int(y2 - y1)])
+            x1 = np.clip((cx - w / 2.0 - dw) / r, 0, orig_w)
+            y1 = np.clip((cy - h / 2.0 - dh) / r, 0, orig_h)
+            x2 = np.clip((cx + w / 2.0 - dw) / r, 0, orig_w)
+            y2 = np.clip((cy + h / 2.0 - dh) / r, 0, orig_h)
+            boxes_xyxy.append([int(x1), int(y1), int(max(0, x2 - x1)), int(max(0, y2 - y1))])
 
         indices = cv2.dnn.NMSBoxes(
             boxes_xyxy,
@@ -95,6 +105,7 @@ class OpenVINOInferenceEngine(BaseInferenceEngine):
         for i in indices.flatten():
             bx, by, bw, bh = boxes_xyxy[i]
             cls_id = int(filtered_classes[i])
+            cls_name = COCO_CLASSES[cls_id] if cls_id < len(COCO_CLASSES) else str(cls_id)
             detections.append(Detection(
                 x1=float(bx),
                 y1=float(by),
@@ -102,7 +113,7 @@ class OpenVINOInferenceEngine(BaseInferenceEngine):
                 y2=float(by + bh),
                 confidence=float(filtered_conf[i]),
                 class_id=cls_id,
-                class_name=str(cls_id)
+                class_name=cls_name
             ))
 
         return detections
